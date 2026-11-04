@@ -5,7 +5,7 @@
 <meta name="apple-mobile-web-app-title" content="إمبراطورية السوق">
 <link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>body{margin:0}[hidden]{display:none!important}</style>
-<script>window.STANDALONE=true;</script><script src="config.js"></script><script src="fbshim.min.js?v=202611041232"></script>
+<script>window.STANDALONE=true;</script><script src="config.js"></script><script src="fbshim.min.js?v=202611041243"></script>
 </head><body><title>إمبراطورية السوق</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -903,10 +903,12 @@ const slotKey=id=>id==='p1'?KEY:KEY+':'+id;
 function saveProfiles(){try{localStorage.setItem(PKEY,JSON.stringify(PROF))}catch(e){}}
 const curProf=()=>PROF.list.find(p=>p.id===PROF.cur);
 let S,view='map',sel=null,selTile=null,selCard=null,features=[],pathOf={};
+// ريست عام لكل اللاعيبة: أي حفظ أو بيانات قبل التاريخ ده بتتجاهل
+const RESET_AT=1793788768998;const afterReset=x=>((x&&x.at)||0)>=RESET_AT;
 function fresh(){
   const mk={};MK.forEach(m=>mk[m.id]={p:m.p,base:m.p,h:Array(40).fill(m.p),held:0});
   const pf={};for(const i in ITEMS)pf[i]=1;
-  return {money:60000,lands:{},bp:[],bpSwaps:0,hand:[],uid:1,packs:0,t:0,nextDraw:60,
+  return {ep:RESET_AT,money:60000,lands:{},bp:[],bpSwaps:0,hand:[],uid:1,packs:0,t:0,nextDraw:60,
     bank:{dep:0,loan:0},bk:freshBK(),mk,pf,ev:[],news:[],boostUntil:0,mgrUntil:0,discBuild:0,discLand:0,picks:0,collected:0,routes:[],gt:[],openImp:{},npc:null,wal:{},accts:{},held:{},fxr:null,gold:{oz:0,cost:0},gp:null,player:{name:(TL("اللاعب")),av:'🧑‍💼'},set:{theme:'system',layout:'auto',fx:true,full:false,news:true,markers:true,speed:1,offline:true},owned:{},paid:0,ms:0,inc:0,last:Date.now(),started:false}
 }
 function load(){try{const r=localStorage.getItem(slotKey(PROF.cur));if(!r)return null;return norm(JSON.parse(r))}catch(e){return null}}
@@ -2642,7 +2644,7 @@ const pmEnd=d=>(d.start||0)+(d.dur||0)*60000;
 const pmLive=d=>d.status==='active'&&Date.now()<pmEnd(d);
 function pmSub(){if(PM.unsub||!AUTH.db||!AUTH.id)return;
   PM.unsub=AUTH.db.collection('market').orderBy('at','desc').limit(150).onSnapshot(snap=>{
-    PM.list=snap.docs.map(d=>{const x=d.data()||{};return {...x,id:d.id}});pmSync();pmNotify();
+    PM.list=snap.docs.map(d=>{const x=d.data()||{};return {...x,id:d.id}}).filter(afterReset);pmSync();pmNotify();
     if(view==='trade'&&!uiBusy()&&!document.activeElement.closest?.('#view input,#view select'))renderView()},e=>{PM.err=e&&e.code||'err'})}
 // تسجيل العقود اللي انا طرف فيها في الحفظ المحلي + دفع المشتري على قد اللي اتسلّم
 function pmSync(){if(!S||!PM.list)return;if(!S.pt)S.pt={};const me=pmMine();
@@ -3104,7 +3106,7 @@ function renderSettings(v){
   $('#expBtn').onclick=()=>{const code=exportCode();const ta=$('#impTxt');
     const done=()=>toast((TL("كود الحفظ اتنسخ")));
     try{navigator.clipboard.writeText(code).then(done,()=>{ta.value=code;ta.select();toast((TL("الكود في الخانة. انسخه بإيدك")))})}catch(_){ta.value=code;ta.select();toast((TL("الكود في الخانة. انسخه بإيدك")))}};
-  $('#impBtn').onclick=()=>arm('impBtn',()=>{try{const d=JSON.parse(decodeURIComponent(escape(atob($('#impTxt').value.trim()))));d=norm(d);if(!d)throw 0;boot(d);save();toast((TL("اللعبة اتحمّلت من الكود")))}catch(_){toast((TL("الكود مش صحيح. اتأكد إنك نسخته كله")))}});
+  $('#impBtn').onclick=()=>arm('impBtn',()=>{try{let d=JSON.parse(decodeURIComponent(escape(atob($('#impTxt').value.trim()))));d=norm(d);if(!d)throw 0;boot(d);save();toast((TL("اللعبة اتحمّلت من الكود")))}catch(_){toast((TL("الكود مش صحيح. اتأكد إنك نسخته كله")))}});
   $('#rsSet').onclick=()=>{S.set=fresh().set;applySettings();renderSettings(v);toast((TL("الإعدادات رجعت للأصل")))};
   $('#rsMk').onclick=()=>{for(const i in ITEMS)S.pf[i]=1;S.ev=[];toast((TL("أسعار السوق رجعت لطبيعتها")))};
   $('#rsAll').onclick=()=>arm('rsAll',()=>{const n=S.player;S=fresh();S.player=n;save();boot(S);toast((TL("بدأت لعبة جديدة")))});
@@ -3216,7 +3218,7 @@ function setLogged(v){LOGGED=v;try{v?localStorage.setItem(LKEY,v):localStorage.r
 const AUTH={u:null,db:null,id:null,me:null,ready:false,tried:false,players:null,lbErr:null,slow:false,busyS:0,busyL:0,cloudAt:0,lbAt:0,sig:'',unsub:null,ro:false};
 function esc(x){return String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function coOf(code){const A=code?cc(code):null;return (A&&S.cos&&S.cos[A]&&S.cos[A].n)||S.co||(TL("شركتك"))}
-function norm(d){if(!d||!d.lands||(d.money==null&&d.startCash==null))return null;const f=fresh();for(const k in f)if(d[k]===undefined)d[k]=f[k];for(const i in ITEMS)if(d.pf[i]==null)d.pf[i]=1;return d}
+function norm(d){if(!d||!d.lands||(d.money==null&&d.startCash==null))return null;if(!(d.ep>=RESET_AT))return null;const f=fresh();for(const k in f)if(d[k]===undefined)d[k]=f[k];for(const i in ITEMS)if(d.pf[i]==null)d.pf[i]=1;return d}
 const saveP=()=>'data/users/'+AUTH.id+'/save';
 
 async function initAuth(){if(AUTH.tried)return;AUTH.tried=true;
@@ -3246,7 +3248,7 @@ function cloudTick(force){if(LOGGED!=='claude'||!AUTH.db||!AUTH.id||!S||AUTH.ro)
     AUTH.db.doc('players/'+AUTH.id).set({...st,at:now}).then(()=>{AUTH.sig=sig}).catch(e=>{if(e&&e.code==='invalid_argument')AUTH.ro=true}).finally(()=>AUTH.busyL=0)}}
 function subLB(){if(AUTH.unsub)return;const t=setTimeout(()=>{AUTH.slow=true;if(view==='rank')renderView()},10000);
   AUTH.unsub=AUTH.db.collection('players').orderBy('score','desc').limit(300).onSnapshot(snap=>{
-    AUTH.players=snap.docs.map(d=>{const x=d.data()||{};return {...x,id:d.id}});if(!snap.metadata.fromCache){clearTimeout(t);AUTH.slow=false}if(view==='rank'||view==='me')renderView()},
+    AUTH.players=snap.docs.map(d=>{const x=d.data()||{};return {...x,id:d.id}}).filter(afterReset);if(!snap.metadata.fromCache){clearTimeout(t);AUTH.slow=false}if(view==='rank'||view==='me')renderView()},
     e=>{clearTimeout(t);AUTH.lbErr=e&&e.code||'err';if(view==='rank')renderView()})}
 
 function myStats(){const L=Object.values(S.lands),ctrs=[...new Set(ownedCodes().map(cc))];
@@ -3385,11 +3387,11 @@ function regAccounts(){if(!online()||SO.regBusy||!S||!S.started)return;const st=
   for(const A in S.accts){const a=S.accts[A],b=lbOf(A);if(!a.code)continue;const sig=[AUTH.id,st.nick,st.av,coOf(A),b?b.n:''].join('|');if(a.regSig===sig)continue;
     SO.regBusy=1;AUTH.db.doc('accounts/'+a.code).set({owner:AUTH.id,nick:st.nick,av:st.av,co:coOf(A),A,cur:curOf(A),bank:b?b.n:'',at:Date.now()}).then(()=>{a.regSig=sig}).catch(()=>{}).finally(()=>SO.regBusy=0);return}}
 function socialSub(){if(!AUTH.db||!AUTH.id)return;const db=AUTH.db,me=AUTH.id;
-  if(!SO.chUn)SO.chUn=db.collection('chat').orderBy('at','desc').limit(60).onSnapshot(sn=>{SO.chat=sn.docs.map(d=>({...(d.data()||{}),id:d.id})).filter(x=>x.text).reverse();SO.chErr=null;socBadge();soRefresh()},e=>{SO.chErr=e&&e.code||'err';soRefresh()});
-  if(!SO.frUn)SO.frUn=db.collection('freq').where('users','array-contains',me).onSnapshot(sn=>{const old=SO.fr;SO.fr=sn.docs.map(d=>({...(d.data()||{}),id:d.id}));SO.frErr=null;
+  if(!SO.chUn)SO.chUn=db.collection('chat').orderBy('at','desc').limit(60).onSnapshot(sn=>{SO.chat=sn.docs.map(d=>({...(d.data()||{}),id:d.id})).filter(x=>x.text&&afterReset(x)).reverse();SO.chErr=null;socBadge();soRefresh()},e=>{SO.chErr=e&&e.code||'err';soRefresh()});
+  if(!SO.frUn)SO.frUn=db.collection('freq').where('users','array-contains',me).onSnapshot(sn=>{const old=SO.fr;SO.fr=sn.docs.map(d=>({...(d.data()||{}),id:d.id})).filter(afterReset);SO.frErr=null;
     if(old)SO.fr.forEach(f=>{const o=old.find(x=>x.id===f.id);if(!o&&f.status==='pending'&&f.to===me)toast(`👋 ${f.fromNick||(TL("لاعب"))} ${TL("عايز يبقى صاحبك")}`);if(o&&o.status==='pending'&&f.status==='ok'&&f.from===me)toast(`🤝 ${f.toNick||(TL("لاعب"))} ${TL("قبل الصداقة")}`)});
     socBadge();soRefresh()},e=>{SO.frErr=e&&e.code||'err';soRefresh()});
-  if(!SO.rxUn)SO.rxUn=db.collection('transfers').where('to','==',me).where('status','==','sent').onSnapshot(sn=>{SO.rx=sn.docs.map(d=>({...(d.data()||{}),id:d.id}));rxProcess()},()=>{})}
+  if(!SO.rxUn)SO.rxUn=db.collection('transfers').where('to','==',me).where('status','==','sent').onSnapshot(sn=>{SO.rx=sn.docs.map(d=>({...(d.data()||{}),id:d.id})).filter(afterReset);rxProcess()},()=>{})}
 // استلام الفلوس: بتنزل في الحساب اللي الكود بتاعه اتكتب، أو حساب نفس الدولة، أو الحساب الفعّال
 async function rxProcess(){if(!online()||!S||!S.started||!SO.rx||!SO.rx.length||SO.rxBusy)return;if(!S.rx)S.rx={};SO.rxBusy=1;let got0=0;
   try{for(const d of SO.rx){const usd=+d.usd;if(!(usd>0))continue;
@@ -3404,7 +3406,7 @@ async function rxProcess(){if(!online()||!S||!S.started||!SO.rx||!SO.rx.length||
 function xhLog(o){if(!S.xh)S.xh=[];S.xh.unshift({t:Date.now(),...o});if(S.xh.length>60)S.xh.length=60}
 async function xfLookup(){const x=SO.xf,code=normCode(x.code);x.hit=null;x.err='';if(code.length<5){x.look=0;return soRefresh(1)}
   if(!online())return;x.look=1;soRefresh(1);
-  try{const sn=await AUTH.db.doc('accounts/'+code).get();if(normCode(SO.xf.code)!==code)return;x.hit=sn.exists?{...sn.data(),code}:null;x.err=sn.exists?'':(TL("الكود ده مش موجود. اتأكد منه تاني"))}catch(e){x.err=(TL("مش قادر يدوّر دلوقتي. جرّب تاني"))}
+  try{const sn=await AUTH.db.doc('accounts/'+code).get();if(normCode(SO.xf.code)!==code)return;const ok=sn.exists&&afterReset(sn.data());x.hit=ok?{...sn.data(),code}:null;x.err=ok?'':(TL("الكود ده مش موجود. اتأكد منه تاني"))}catch(e){x.err=(TL("مش قادر يدوّر دلوقتي. جرّب تاني"))}
   x.look=0;soRefresh(1)}
 const xfFrom=()=>{const x=SO.xf;return x.from&&S.accts[x.from]?x.from:(actA()&&S.accts[actA()]?actA():Object.keys(S.accts)[0])};
 async function xfSend(){const x=SO.xf;if(!online())return toast((TL("لازم تدخل بحسابك عشان تحوّل للاعيبة")));if(x.busy)return;
@@ -3428,12 +3430,12 @@ async function addFriend(uid,nick){if(!online())return toast((TL("لازم تد�
   const ex=frOf(uid);if(ex)return toast(ex.status==='ok'?(TL("ده صاحبك فعلاً")):(TL("فيه طلب صداقة مستني بينكم")));
   const st=myStats();try{await AUTH.db.doc('freq/'+pairId(AUTH.id,uid)).set({users:[AUTH.id,uid].sort(),from:AUTH.id,to:uid,fromNick:st.nick,fromAv:st.av,toNick:String(nick||'').slice(0,24),toAv:'',status:'pending',at:Date.now()});toast((TL("طلب الصداقة اتبعت")+' 👋'))}catch(e){toast((TL("الطلب متمّش. جرّب تاني")))}}
 async function addFriendByCode(){const code=normCode(SO.addCode);if(code.length<5)return toast((TL("اكتب كود حساب صاحبك")));if(SO.addBusy)return;SO.addBusy=1;
-  try{const sn=await AUTH.db.doc('accounts/'+code).get();if(!sn.exists)return toast((TL("الكود ده مش موجود")));const h=sn.data();if(h.owner===AUTH.id)return toast((TL("ده كودك انت")+' 🙂'));await addFriend(h.owner,h.nick);SO.addCode=''}catch(e){toast((TL("مش قادر يدوّر دلوقتي")))}finally{SO.addBusy=0;if(view==='social')renderView()}}
+  try{const sn=await AUTH.db.doc('accounts/'+code).get();if(!sn.exists||!afterReset(sn.data()))return toast((TL("الكود ده مش موجود")));const h=sn.data();if(h.owner===AUTH.id)return toast((TL("ده كودك انت")+' 🙂'));await addFriend(h.owner,h.nick);SO.addCode=''}catch(e){toast((TL("مش قادر يدوّر دلوقتي")))}finally{SO.addBusy=0;if(view==='social')renderView()}}
 async function frAccept(id){const st=myStats();try{await AUTH.db.doc('freq/'+id).update({status:'ok',toNick:st.nick,toAv:st.av,ok:Date.now()});toast((TL("بقيتوا أصحاب")+' 🤝'))}catch(e){toast((TL("متمّش. جرّب تاني")))}}
 async function frRemove(id){try{const r=AUTH.db.doc('freq/'+id);if(r.delete)await r.delete();else await r.update({status:'x'})}catch(e){toast((TL("متمّش. جرّب تاني")))}}
 async function frSendMoney(uid){const f=frOf(uid),o=f?frOther(f):{id:uid,nick:''};const x=SO.xf;x.fid=uid;x.fnick=o.nick||'';x.fopts=null;x.code='';x.hit=null;x.err='';SO.tab='send';
   $('#plModal')&&($('#plModal').hidden=true);setView('social');
-  try{const sn=await AUTH.db.collection('accounts').where('owner','==',uid).get();x.fopts=sn.docs.map(d=>({...(d.data()||{}),code:d.id}));
+  try{const sn=await AUTH.db.collection('accounts').where('owner','==',uid).get();x.fopts=sn.docs.map(d=>({...(d.data()||{}),code:d.id})).filter(afterReset);
     if(x.fopts.length){const pick=x.fopts.find(o2=>o2.A===xfFrom())||x.fopts[0];x.code=pick.code;x.hit=pick}else x.err=(TL("صاحبك لسه معندوش حساب بنك متسجّل. اطلب منه الكود"))}catch(e){x.fopts=[];x.err=(TL("مش قادر يجيب حسابات صاحبك دلوقتي"))}
   if(view==='social')renderView()}
 function frSendGoods(uid){const f=frOf(uid),o=f?frOther(f):plById(uid)||{};PM.to=uid;PM.toNick=o.nick||'';PM.k='sell';PM.it=null;PM.q=0;PM.p=0;
